@@ -6,7 +6,7 @@ from scipy import misc
 from lib.pvt import PolypPVT
 from utils.dataloader import test_dataset
 import cv2
-
+from PIL import Image
 def main(args) :
 
     print(f' step 1. make model')
@@ -61,14 +61,16 @@ def main(args) :
             h,w = res.shape
             # expand rgb_image to [500,574,3]
             res = np.expand_dims(res, axis=2).repeat(3, axis=2)
-            print(f'res shape : {res.shape}')
+            res_pil = Image.fromarray((res * 255).astype(np.uint8))
+
 
             rgb_image = rgb_image.resize((w,h))
-            rgb_np = np.array(rgb_image) / 255
-            print(f'rgb_np shape : {rgb_np.shape}')
+            #rgb_np = np.array(rgb_image) / 255
+            #print(f'rgb_np shape : {rgb_np.shape}')
 
-            res = cv2.addWeighted(rgb_np, 0.6, res, 0.4, 0) # res (bad black position white)
-            cv2.imwrite(os.path.join(save_path, f'{name}'), res * 255)
+            #res = cv2.addWeighted(rgb_np, 0.6, res, 0.4, 0) # res (bad black position white)
+            #cv2.imwrite(os.path.join(save_path, f'{name}'), res * 255)
+            Image.blend(rgb_image, res_pil, 0.4).save(os.path.join(save_path, f'{name}'))
         print(_data_name, 'Finish!')
 
 
