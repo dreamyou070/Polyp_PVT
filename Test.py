@@ -57,7 +57,8 @@ def main(args) :
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--testsize', type=int, default=352, help='testing size')
+    parser.add_argument('--testsize', type=int,
+                        default=352, help='testing size')
     parser.add_argument('--base_path', type=str,
                         default=r'/home/dreamyou070/MyData/anomaly_detection/medical/leader_polyp/Pranet/test')
     parser.add_argument('--save_base', type=str, default='./result_sy')
