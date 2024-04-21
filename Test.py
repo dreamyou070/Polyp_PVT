@@ -70,7 +70,16 @@ def main(args) :
 
             #res = cv2.addWeighted(rgb_np, 0.6, res, 0.4, 0) # res (bad black position white)
             #cv2.imwrite(os.path.join(save_path, f'{name}'), res * 255)
-            Image.blend(rgb_image, res_pil, 0.4).save(os.path.join(save_path, f'{name}'))
+
+            merged_image = Image.blend(rgb_image, res_pil, 0.4)
+
+            # [8] merging all image
+            total_img = Image.new('RGB', (w*3, h))
+            total_img.paste(rgb_image, (0,0))
+            total_img.paste(res_pil, (w,0))
+            total_img.paste(merged_image, (w*2,0))
+            total_img.save(os.path.join(save_path, f'{name}'))
+            
         print(_data_name, 'Finish!')
 
 
