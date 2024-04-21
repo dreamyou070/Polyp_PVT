@@ -40,10 +40,12 @@ def main(args) :
             # image
             # gt = pil image
             # name
-            image, gt, name = test_loader.load_data()
+            image, gt, name, rgb_image = test_loader.load_data()
             gt = np.asarray(gt, np.float32) # [384,384]
             gt /= (gt.max() + 1e-8)
             image = image.cuda()
+
+
 
             # [5] model forward
             P1, P2 = model(image)
@@ -52,9 +54,15 @@ def main(args) :
             res = F.upsample(P1 + P2, size=gt.shape, mode='bilinear', align_corners=False)
             res = res.sigmoid().data.cpu().numpy().squeeze()
             res = (res - res.min()) / (res.max() - res.min() + 1e-8)
-            print(f'res = {res.shape} | type = {type(res)} | max = {res.max()} | min = {res.min()}')
-            cv2.imwrite(os.path.join(save_path, f'{name}'),
-                        res * 255)
+
+            # [7] merging two image with alpha value
+            # res = [500,574]
+            # [0 ~ 1 ] value
+            h,w = res.shape
+            rgb_image = rgb_image.resize((w,h))
+
+            res = cv2.addWeighted(np.array(rgb_image)/255, 0.6, res, 0.4, 0) # res (bad black position white)
+            cv2.imwrite(os.path.join(save_path, f'{name}'), res * 255)
         print(_data_name, 'Finish!')
 
 

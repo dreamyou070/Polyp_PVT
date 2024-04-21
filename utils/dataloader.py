@@ -143,14 +143,14 @@ class test_dataset:
         self.index = 0
 
     def load_data(self):
-        image = self.rgb_loader(self.images[self.index])
-        image = self.transform(image).unsqueeze(0)
+        rgb_image = self.rgb_loader(self.images[self.index])
+        image = self.transform(rgb_image).unsqueeze(0)
         gt = self.binary_loader(self.gts[self.index])
         name = self.images[self.index].split('/')[-1]
         if name.endswith('.jpg'):
             name = name.split('.jpg')[0] + '.png'
         self.index += 1
-        return image, gt, name
+        return image, gt, name, rgb_image
 
     def rgb_loader(self, path):
         with open(path, 'rb') as f:
