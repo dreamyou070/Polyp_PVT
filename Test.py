@@ -60,8 +60,9 @@ def main(args) :
             # [0 ~ 1 ] value
             h,w = res.shape
             rgb_image = rgb_image.resize((w,h))
+            rgb_np = np.array(rgb_image) / 255
 
-            res = cv2.addWeighted(np.array(rgb_image)/255, 0.6, res, 0.4, 0) # res (bad black position white)
+            res = cv2.addWeighted(rgb_np, 0.6, res, 0.4, 0) # res (bad black position white)
             cv2.imwrite(os.path.join(save_path, f'{name}'), res * 255)
         print(_data_name, 'Finish!')
 
