@@ -156,7 +156,9 @@ class SpatialAttention(nn.Module):
 
 
 class PolypPVT(nn.Module):
+
     def __init__(self, channel=32):
+
         super(PolypPVT, self).__init__()
 
         self.backbone = pvt_v2_b2()  # [64, 128, 320, 512]
@@ -196,28 +198,28 @@ class PolypPVT(nn.Module):
         cim_feature = self.sa(x1) * x1 # spatial attention
 
 
-        # CFM
+        # [1] CFM feature
         x2_t = self.Translayer2_1(x2)  
         x3_t = self.Translayer3_1(x3)  
         x4_t = self.Translayer4_1(x4)  
         cfm_feature = self.CFM(x4_t, x3_t, x2_t)
+        prediction1 = self.out_CFM(cfm_feature)
+        prediction1_8 = F.interpolate(prediction1, scale_factor=8, mode='bilinear')
 
-        # SAM
+        # [2] SAM
         T2 = self.Translayer2_0(cim_feature)
         T2 = self.down05(T2)
         sam_feature = self.SAM(cfm_feature, T2)
-
-        prediction1 = self.out_CFM(cfm_feature)
         prediction2 = self.out_SAM(sam_feature)
+        prediction2_8 = F.interpolate(prediction2, scale_factor=8, mode='bilinear')
 
-        prediction1_8 = F.interpolate(prediction1, scale_factor=8, mode='bilinear') 
-        prediction2_8 = F.interpolate(prediction2, scale_factor=8, mode='bilinear')  
         return prediction1_8, prediction2_8
 
-
+"""
 if __name__ == '__main__':
-    model = PolypPVT().cuda()
+    model = PolypPVT().cuda() # image should have [352,352]
     input_tensor = torch.randn(1, 3, 352, 352).cuda()
 
     prediction1, prediction2 = model(input_tensor)
     print(prediction1.size(), prediction2.size())
+"""
