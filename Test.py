@@ -61,8 +61,11 @@ def main(args) :
             h,w = res.shape
             # expand rgb_image to [500,574,3]
             res = np.expand_dims(res, axis=2).repeat(3, axis=2)
+            print(f'res shape : {res.shape}')
+
             rgb_image = rgb_image.resize((w,h))
             rgb_np = np.array(rgb_image) / 255
+            print(f'rgb_np shape : {rgb_np.shape}')
 
             res = cv2.addWeighted(rgb_np, 0.6, res, 0.4, 0) # res (bad black position white)
             cv2.imwrite(os.path.join(save_path, f'{name}'), res * 255)
