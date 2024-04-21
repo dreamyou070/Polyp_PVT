@@ -25,6 +25,7 @@ def main(args) :
         save_path = os.path.join(args.save_base, _data_name) # './result_map/PolypPVT/{}/'.format()
         os.makedirs(save_path, exist_ok=True)
 
+
         image_root = os.path.join(data_path, 'images')
         gt_root = os.path.join(data_path, 'masks')
 
@@ -51,7 +52,9 @@ def main(args) :
             res = F.upsample(P1 + P2, size=gt.shape, mode='bilinear', align_corners=False)
             res = res.sigmoid().data.cpu().numpy().squeeze()
             res = (res - res.min()) / (res.max() - res.min() + 1e-8)
-            cv2.imwrite(save_path + name, res * 255)
+            print(f'res = {res.shape} | type = {type(res)} | max = {res.max()} | min = {res.min()}')
+            cv2.imwrite(os.path.join(save_path, f'{name}'),
+                        res * 255)
         print(_data_name, 'Finish!')
 
 
