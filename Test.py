@@ -45,8 +45,6 @@ def main(args) :
             gt /= (gt.max() + 1e-8)
             image = image.cuda()
 
-
-
             # [5] model forward
             P1, P2 = model(image)
 
@@ -71,15 +69,19 @@ def main(args) :
             #res = cv2.addWeighted(rgb_np, 0.6, res, 0.4, 0) # res (bad black position white)
             #cv2.imwrite(os.path.join(save_path, f'{name}'), res * 255)
 
+            gt_np = np.array(gt) * 255
+            gt_pil = Image.fromarray(gt_np.astype(np.uint8)).resize((w,h))
+
             merged_image = Image.blend(rgb_image, res_pil, 0.4)
 
             # [8] merging all image
-            total_img = Image.new('RGB', (w*3, h))
+            total_img = Image.new('RGB', (w*4, h))
             total_img.paste(rgb_image, (0,0))
-            total_img.paste(res_pil, (w,0))
-            total_img.paste(merged_image, (w*2,0))
+            total_img.paste(gt_pil, (w,0))
+            total_img.paste(res_pil, (w*2,0))
+            total_img.paste(merged_image, (w*3,0))
             total_img.save(os.path.join(save_path, f'{name}'))
-            
+
         print(_data_name, 'Finish!')
 
 
