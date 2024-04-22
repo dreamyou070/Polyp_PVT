@@ -102,11 +102,11 @@ def train(train_loader, model, optimizer, epoch, test_path, total_step):
                                     mode='bilinear',
                                     align_corners=True)
                 gts = F.upsample(gts, size=(trainsize, trainsize), mode='bilinear', align_corners=True)
-
-            print(f'gts = {gts.shape} | max = {gts.max()} | min = {gts.min()} | mean = {gts.mean()} | std = {gts.std()}')
+            # max value = 1, min value = 0
 
             # [3] forward
             P1, P2= model(images)
+
 
             # [4] loss function
             loss_P1 = structure_loss(P1, gts)
