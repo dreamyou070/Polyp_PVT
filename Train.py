@@ -147,33 +147,33 @@ def plot_train(dict_plot=None, name = None):
 
 
 def main(opt):
+
+    print(f' step 1. build models')
     logging.basicConfig(filename='train_log.log',
                         format='[%(asctime)s-%(filename)s-%(levelname)s:%(message)s]',
                         level=logging.INFO, filemode='a', datefmt='%Y-%m-%d %I:%M:%S %p')
-
-    # ---- build models ----
-    # torch.cuda.set_device(0)  # set your gpu device
     model = PolypPVT().cuda()
 
+    print(f' step 2. optimizer')
     best = 0
-
     params = model.parameters()
-
     if opt.optimizer == 'AdamW':
         optimizer = torch.optim.AdamW(params, opt.lr, weight_decay=1e-4)
     else:
         optimizer = torch.optim.SGD(params, opt.lr, weight_decay=1e-4, momentum=0.9)
-
     print(optimizer)
+
+    print(f' step 3. dataset and dataloader')
     image_root = '{}/images/'.format(opt.train_path)
     gt_root = '{}/masks/'.format(opt.train_path)
-
-    train_loader = get_loader(image_root, gt_root, batchsize=opt.batchsize, trainsize=opt.trainsize,
+    train_loader = get_loader(image_root,
+                              gt_root,
+                              batchsize=opt.batchsize,
+                              trainsize=opt.trainsize,
                               augmentation=opt.augmentation)
     total_step = len(train_loader)
 
-    print("#" * 20, "Start Training", "#" * 20)
-
+    print(f' step 4. start training')
     for epoch in range(1, opt.epoch):
         adjust_lr(optimizer, opt.lr, epoch, 0.1, 200)
         train(train_loader, model, optimizer, epoch, opt.test_path)
