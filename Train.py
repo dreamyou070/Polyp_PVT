@@ -75,15 +75,21 @@ def train(train_loader, model, optimizer, epoch, test_path, total_step):
     for i, pack in enumerate(train_loader, start=1):
         for rate in size_rates:
             optimizer.zero_grad()
-            # ---- data prepare ----
+
+            # [1] data prepare
+            # with Variable() : autogradient
             images, gts = pack
             images = Variable(images).cuda()
             gts = Variable(gts).cuda()
-            # ---- rescale ----
+            print(f'images = {images.shape}, gts = {gts.shape}')
+
+            # [2] rescale
+            # trainsize = 352
             trainsize = int(round(opt.trainsize * rate / 32) * 32)
             if rate != 1:
                 images = F.upsample(images, size=(trainsize, trainsize), mode='bilinear', align_corners=True)
                 gts = F.upsample(gts, size=(trainsize, trainsize), mode='bilinear', align_corners=True)
+            print(f'after resize, images = {images.shape}, gts = {gts.shape}')
 
 
 
@@ -184,9 +190,6 @@ def main(opt):
     for epoch in range(1, opt.epoch):
         adjust_lr(optimizer, opt.lr, epoch, 0.1, 200)
         train(train_loader, model, optimizer, epoch, opt.test_path, len(train_loader))
-
-    # plot the eval.png in the training stage
-    # plot_train(dict_plot, name)
 
 
 if __name__ == '__main__':
