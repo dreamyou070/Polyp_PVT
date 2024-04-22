@@ -22,13 +22,15 @@ def main(opt):
                         format='[%(asctime)s-%(filename)s-%(levelname)s:%(message)s]',
                         level=logging.INFO, filemode='a', datefmt='%Y-%m-%d %I:%M:%S %p')
     model = PolypPVT().cuda()
+    weight_dtype = torch.float32
+    model.to(dtype=weight_dtype)
 
     print(f' step 2. cim module')
     # [2] cim module
     backbone_model = model.backbone
 
     # [3] input
-    input = torch.randn(1, 3, 256, 256)
+    input = torch.randn(1, 3, 256, 256).to(dtype=weight_dtype)
     vit_output = backbone_model(input)
     #low_level_feature =
 
