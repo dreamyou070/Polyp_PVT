@@ -13,8 +13,12 @@ import logging
 import matplotlib.pyplot as plt
 
 def structure_loss(pred, mask):
+
+    # (1) real mask preprocessing
     weit = 1 + 5 * torch.abs(F.avg_pool2d(mask, kernel_size=31, stride=1, padding=15) - mask)
+    # (2) cross entropy loss between pred and mask
     wbce = F.binary_cross_entropy_with_logits(pred, mask, reduce='none')
+
     wbce = (weit * wbce).sum(dim=(2, 3)) / weit.sum(dim=(2, 3))
 
     pred = torch.sigmoid(pred)
@@ -73,7 +77,10 @@ def train(train_loader, model, optimizer, epoch, test_path, total_step):
     size_rates = [0.75, 1, 1.25] 
     loss_P2_record = AvgMeter()
     for i, pack in enumerate(train_loader, start=1):
+
+
         for rate in size_rates:
+
             optimizer.zero_grad()
 
             # [1] data prepare
@@ -81,28 +88,32 @@ def train(train_loader, model, optimizer, epoch, test_path, total_step):
             images, gts = pack
             images = Variable(images).cuda()
             gts = Variable(gts).cuda()
-            print(f'images = {images.shape}, gts = {gts.shape}')
 
             # [2] rescale
-            # trainsize = 352
+            # all size into 256 -> 352 -> 448
+            # opt.trainsize = 352
+            # 352 * 0.75 = 264 -> 256
+            # 352 * 1.25 = 440 -> 448
+            # various sizes ...
             trainsize = int(round(opt.trainsize * rate / 32) * 32)
             if rate != 1:
-                images = F.upsample(images, size=(trainsize, trainsize), mode='bilinear', align_corners=True)
+                images = F.upsample(images,
+                                    size=(trainsize, trainsize),
+                                    mode='bilinear',
+                                    align_corners=True)
                 gts = F.upsample(gts, size=(trainsize, trainsize), mode='bilinear', align_corners=True)
-            print(f'after resize, images = {images.shape}, gts = {gts.shape}')
 
+            print(f'gts = {gts.shape} | max = {gts.max()} | min = {gts.min()} | mean = {gts.mean()} | std = {gts.std()}')
 
-
-
-            # ---- forward ----
+            # [3] forward
             P1, P2= model(images)
 
-            # ---- loss function ----
+            # [4] loss function
             loss_P1 = structure_loss(P1, gts)
             loss_P2 = structure_loss(P2, gts)
             loss = loss_P1 + loss_P2 
 
-            # ---- backward ----
+            # [5] backward
             loss.backward()
             clip_gradient(optimizer, opt.clip)
             optimizer.step()
