@@ -67,7 +67,7 @@ def test(model, path, dataset):
 
 
 
-def train(train_loader, model, optimizer, epoch, test_path):
+def train(train_loader, model, optimizer, epoch, test_path, total_step):
     model.train()
     global best
     size_rates = [0.75, 1, 1.25] 
@@ -84,19 +84,27 @@ def train(train_loader, model, optimizer, epoch, test_path):
             if rate != 1:
                 images = F.upsample(images, size=(trainsize, trainsize), mode='bilinear', align_corners=True)
                 gts = F.upsample(gts, size=(trainsize, trainsize), mode='bilinear', align_corners=True)
+
+
+
+
             # ---- forward ----
             P1, P2= model(images)
+
             # ---- loss function ----
             loss_P1 = structure_loss(P1, gts)
             loss_P2 = structure_loss(P2, gts)
             loss = loss_P1 + loss_P2 
+
             # ---- backward ----
             loss.backward()
             clip_gradient(optimizer, opt.clip)
             optimizer.step()
+
             # ---- recording loss ----
             if rate == 1:
                 loss_P2_record.update(loss_P2.data, opt.batchsize)
+
         # ---- train visualization ----
         if i % 20 == 0 or i == total_step:
             print('{} Epoch [{:03d}/{:03d}], Step [{:04d}/{:04d}], '
@@ -171,12 +179,12 @@ def main(opt):
                               batchsize=opt.batchsize,
                               trainsize=opt.trainsize,
                               augmentation=opt.augmentation)
-    total_step = len(train_loader)
+    total_step =
 
     print(f' step 4. start training')
     for epoch in range(1, opt.epoch):
         adjust_lr(optimizer, opt.lr, epoch, 0.1, 200)
-        train(train_loader, model, optimizer, epoch, opt.test_path)
+        train(train_loader, model, optimizer, epoch, opt.test_path, len(train_loader))
 
     # plot the eval.png in the training stage
     # plot_train(dict_plot, name)
