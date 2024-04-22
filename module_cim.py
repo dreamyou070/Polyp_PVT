@@ -30,7 +30,7 @@ def main(opt):
     backbone_model = model.backbone
 
     # [3] input
-    input = torch.randn(1, 3, 256, 256).to(dtype=weight_dtype)
+    input = torch.randn(1, 3, 256, 256).to(dtype=weight_dtype, device='cuda')
     vit_output = backbone_model(input)
     #low_level_feature =
 
