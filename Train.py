@@ -179,7 +179,6 @@ def main(opt):
                               batchsize=opt.batchsize,
                               trainsize=opt.trainsize,
                               augmentation=opt.augmentation)
-    total_step =
 
     print(f' step 4. start training')
     for epoch in range(1, opt.epoch):
