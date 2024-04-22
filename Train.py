@@ -42,13 +42,19 @@ def test(model, path, dataset):
 
         res, res1  = model(image)
         # eval Dice
+
+        # [1] predict
         res = F.upsample(res + res1 , size=gt.shape, mode='bilinear', align_corners=False)
         res = res.sigmoid().data.cpu().numpy().squeeze()
         res = (res - res.min()) / (res.max() - res.min() + 1e-8)
         input = res
+        # [2] gt image
+
         target = np.array(gt)
         N = gt.shape
         smooth = 1
+
+        # Getting Dice Score #
         input_flat = np.reshape(input, (-1))
         target_flat = np.reshape(target, (-1))
         intersection = (input_flat * target_flat)
@@ -113,6 +119,8 @@ def train(train_loader, model, optimizer, epoch, test_path):
             logging.info('epoch: {}, dataset: {}, dice: {}'.format(epoch, dataset, dataset_dice))
             print(dataset, ': ', dataset_dice)
             dict_plot[dataset].append(dataset_dice)
+
+        # dice score #
         meandice = test(model, test_path, 'test')
         dict_plot['test'].append(meandice)
         if meandice > best:
@@ -136,55 +144,9 @@ def plot_train(dict_plot=None, name = None):
     plt.legend()
     plt.savefig('eval.png')
     # plt.show()
-    
-    
-if __name__ == '__main__':
-    dict_plot = {'CVC-300':[], 'CVC-ClinicDB':[], 'Kvasir':[], 'CVC-ColonDB':[], 'ETIS-LaribPolypDB':[], 'test':[]}
-    name = ['CVC-300', 'CVC-ClinicDB', 'Kvasir', 'CVC-ColonDB', 'ETIS-LaribPolypDB', 'test']
-    ##################model_name#############################
-    model_name = 'PolypPVT'
-    ###############################################
-    parser = argparse.ArgumentParser()
 
-    parser.add_argument('--epoch', type=int,
-                        default=100, help='epoch number')
 
-    parser.add_argument('--lr', type=float,
-                        default=1e-4, help='learning rate')
-
-    parser.add_argument('--optimizer', type=str,
-                        default='AdamW', help='choosing optimizer AdamW or SGD')
-
-    parser.add_argument('--augmentation',
-                        default=False, help='choose to do random flip rotation')
-
-    parser.add_argument('--batchsize', type=int,
-                        default=16, help='training batch size')
-
-    parser.add_argument('--trainsize', type=int,
-                        default=352, help='training dataset size')
-
-    parser.add_argument('--clip', type=float,
-                        default=0.5, help='gradient clipping margin')
-
-    parser.add_argument('--decay_rate', type=float,
-                        default=0.1, help='decay rate of learning rate')
-
-    parser.add_argument('--decay_epoch', type=int,
-                        default=50, help='every n epochs decay learning rate')
-
-    parser.add_argument('--train_path', type=str,
-                        default='./dataset/TrainDataset/',
-                        help='path to train dataset')
-
-    parser.add_argument('--test_path', type=str,
-                        default='./dataset/TestDataset/',
-                        help='path to testing Kvasir dataset')
-
-    parser.add_argument('--train_save', type=str,
-                        default='./model_pth/'+model_name+'/')
-
-    opt = parser.parse_args()
+def main(opt):
     logging.basicConfig(filename='train_log.log',
                         format='[%(asctime)s-%(filename)s-%(levelname)s:%(message)s]',
                         level=logging.INFO, filemode='a', datefmt='%Y-%m-%d %I:%M:%S %p')
@@ -215,6 +177,42 @@ if __name__ == '__main__':
     for epoch in range(1, opt.epoch):
         adjust_lr(optimizer, opt.lr, epoch, 0.1, 200)
         train(train_loader, model, optimizer, epoch, opt.test_path)
-    
+
     # plot the eval.png in the training stage
     # plot_train(dict_plot, name)
+
+
+if __name__ == '__main__':
+    dict_plot = {'CVC-300':[], 'CVC-ClinicDB':[], 'Kvasir':[], 'CVC-ColonDB':[], 'ETIS-LaribPolypDB':[], 'test':[]}
+    name = ['CVC-300', 'CVC-ClinicDB', 'Kvasir', 'CVC-ColonDB', 'ETIS-LaribPolypDB', 'test']
+    ################## model_name #############################
+    model_name = 'PolypPVT'
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--epoch', type=int,
+                        default=100, help='epoch number')
+    parser.add_argument('--lr', type=float,
+                        default=1e-4, help='learning rate')
+    parser.add_argument('--optimizer', type=str,
+                        default='AdamW', help='choosing optimizer AdamW or SGD')
+    parser.add_argument('--augmentation',
+                        default=False, help='choose to do random flip rotation')
+    parser.add_argument('--batchsize', type=int,
+                        default=16, help='training batch size')
+    parser.add_argument('--trainsize', type=int,
+                        default=352, help='training dataset size')
+    parser.add_argument('--clip', type=float,
+                        default=0.5, help='gradient clipping margin')
+    parser.add_argument('--decay_rate', type=float,
+                        default=0.1, help='decay rate of learning rate')
+    parser.add_argument('--decay_epoch', type=int,
+                        default=50, help='every n epochs decay learning rate')
+    parser.add_argument('--train_path', type=str,
+                        default='./dataset/TrainDataset/',
+                        help='path to train dataset')
+    parser.add_argument('--test_path', type=str,
+                        default='./dataset/TestDataset/',
+                        help='path to testing Kvasir dataset')
+    parser.add_argument('--train_save', type=str,
+                        default='./model_pth/'+model_name+'/')
+    opt = parser.parse_args()
+    main(opt)
