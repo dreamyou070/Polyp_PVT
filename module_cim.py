@@ -32,7 +32,17 @@ def main(opt):
     # [3] input
     input = torch.randn(1, 3, 256, 256).to(dtype=weight_dtype, device='cuda')
     vit_output = backbone_model(input)
-    #low_level_feature =
+    low_level_feature = vit_output[0]
+    x1 = low_level_feature
+    print(f' low level feature = {x1.size()}')
+
+    # [4] cim module
+    # [4.1] channel attention
+    ca = model.ca
+    weight = ca(x1)
+    print(f' weight = {weight.size()}')
+    x1 = ca(x1) * x1  # channel attention
+
 
 
 
