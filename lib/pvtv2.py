@@ -313,6 +313,7 @@ class PyramidVisionTransformerImpr(nn.Module):
     #             size=(H, W), mode="bilinear").reshape(1, -1, H * W).permute(0, 2, 1)
 
     def forward_features(self, x):
+
         B = x.shape[0]
         outs = []
 
