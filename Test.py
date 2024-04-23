@@ -101,6 +101,6 @@ if __name__ == '__main__':
                         default=r'/home/dreamyou070/MyData/anomaly_detection/medical/leader_polyp/Pranet/test')
     parser.add_argument('--save_base', type=str, default='./result_sy_infer_with_train')
     parser.add_argument('--pth_path', type=str, default='./model_pth/PolypPVT.pth')
-    parser.add_argument('--infer_with_train', type=bool, default=False)
+    parser.add_argument('--infer_with_train', action='store_true')
     args = parser.parse_args()
     main(args)
