@@ -35,7 +35,7 @@ def main(args) :
             gt_root = os.path.join(data_path, 'masks')
         else :
             image_root = os.path.join(data_path, 'image_256')
-            gt_root = os.path.join(data_path, 'masks_256')
+            gt_root = os.path.join(data_path, 'mask_256')
 
         num1 = len(os.listdir(gt_root))
 
