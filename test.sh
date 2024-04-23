@@ -1,1 +1,1 @@
-python -W ignore Test.py
+python -W ignore Test.py --infer_with_train

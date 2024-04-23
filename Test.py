@@ -16,7 +16,12 @@ def main(args) :
     model.eval()
 
     print(f' step 2. check data path')
-    for _data_name in ['CVC-300', 'CVC-ClinicDB', 'Kvasir', 'CVC-ColonDB', 'ETIS-LaribPolypDB']:
+    test_folder = ['CVC-300', 'CVC-ClinicDB', 'Kvasir', 'CVC-ColonDB', 'ETIS-LaribPolypDB']
+    train_folder = ['res_256']
+    base_folder = test_folder
+    if args.infer_with_train :
+        base_folder = train_folder
+    for _data_name in base_folder :
 
         # [1] data_path here
         data_path = os.path.join(args.base_path, _data_name)
@@ -25,9 +30,12 @@ def main(args) :
         save_path = os.path.join(args.save_base, _data_name) # './result_map/PolypPVT/{}/'.format()
         os.makedirs(save_path, exist_ok=True)
 
-
-        image_root = os.path.join(data_path, 'images')
-        gt_root = os.path.join(data_path, 'masks')
+        if not args.infer_with_train :
+            image_root = os.path.join(data_path, 'images')
+            gt_root = os.path.join(data_path, 'masks')
+        else :
+            image_root = os.path.join(data_path, 'image_256')
+            gt_root = os.path.join(data_path, 'masks_256')
 
         num1 = len(os.listdir(gt_root))
 
@@ -91,7 +99,8 @@ if __name__ == '__main__':
                         default=352, help='testing size')
     parser.add_argument('--base_path', type=str,
                         default=r'/home/dreamyou070/MyData/anomaly_detection/medical/leader_polyp/Pranet/test')
-    parser.add_argument('--save_base', type=str, default='./result_sy')
+    parser.add_argument('--save_base', type=str, default='./result_sy_infer_with_train')
     parser.add_argument('--pth_path', type=str, default='./model_pth/PolypPVT.pth')
+    parser.add_argument('--infer_with_train', type=bool, default=False)
     args = parser.parse_args()
     main(args)
