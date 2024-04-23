@@ -98,7 +98,7 @@ if __name__ == '__main__':
     parser.add_argument('--testsize', type=int,
                         default=352, help='testing size')
     parser.add_argument('--base_path', type=str,
-                        default=r'/home/dreamyou070/MyData/anomaly_detection/medical/leader_polyp/Pranet/test')
+                        default=r'/home/dreamyou070/MyData/anomaly_detection/medical/leader_polyp/Pranet/train')
     parser.add_argument('--save_base', type=str, default='./result_sy_infer_with_train')
     parser.add_argument('--pth_path', type=str, default='./model_pth/PolypPVT.pth')
     parser.add_argument('--infer_with_train', action='store_true')
