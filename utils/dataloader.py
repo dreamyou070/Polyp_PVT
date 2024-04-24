@@ -115,8 +115,10 @@ class BrainDataset(data.Dataset):
         self.trainsize = trainsize
         self.augmentations = augmentations
         print(self.augmentations)
-        self.images = [image_root + f for f in os.listdir(image_root) if f.endswith('.jpg') or f.endswith('.png')]
-        self.gts = [gt_root + f for f in os.listdir(gt_root) if f.endswith('.npy')]
+        images = os.listdir(image_root)
+        self.images = [os.path.join(image_root, img) for img in images ]
+        masks = os.listdir(gt_root)
+        self.gts = [os.path.join(gt_root, mask) for mask in masks]
         self.images = sorted(self.images)
         self.gts = sorted(self.gts)
         self.filter_files()
