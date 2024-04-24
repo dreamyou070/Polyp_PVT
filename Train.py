@@ -189,19 +189,20 @@ def main(opt):
     print(optimizer)
 
     print(f' step 3. dataset and dataloader')
-    image_root = '{}/images/'.format(opt.train_path)
-    gt_root = '{}/masks/'.format(opt.train_path)
+    image_root = os.path.join(opt.train_path, 'image_256')
+    gt_root = os.path.join(opt.train_path, 'mask_256')
     train_loader = get_loader(image_root,
                               gt_root,
                               batchsize=opt.batchsize,
                               trainsize=opt.trainsize,
-                              augmentation=opt.augmentation)
-
+                              augmentation=opt.augmentation,
+                              domain = opt.domain)
+    """
     print(f' step 4. start training')
     for epoch in range(1, opt.epoch):
         adjust_lr(optimizer, opt.lr, epoch, 0.1, 200)
         train(train_loader, model, optimizer, epoch, opt.test_path, len(train_loader))
-
+    """
 
 if __name__ == '__main__':
     dict_plot = {'CVC-300':[], 'CVC-ClinicDB':[], 'Kvasir':[], 'CVC-ColonDB':[], 'ETIS-LaribPolypDB':[], 'test':[]}
@@ -235,5 +236,7 @@ if __name__ == '__main__':
                         help='path to testing Kvasir dataset')
     parser.add_argument('--train_save', type=str,
                         default='./model_pth/'+model_name+'/')
+    parser.add_argument('--domain', type=str,
+                        default='polyp', help='domain adaptation')
     opt = parser.parse_args()
     main(opt)
