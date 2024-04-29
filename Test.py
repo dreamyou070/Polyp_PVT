@@ -1,106 +1,222 @@
 import torch
+from torch.autograd import Variable
+import os
+import argparse
+from datetime import datetime
+from lib.pvt import PolypPVT
+from utils.dataloader import get_loader, test_dataset
+from utils.utils import clip_gradient, adjust_lr, AvgMeter
 import torch.nn.functional as F
 import numpy as np
-import os, argparse
-from scipy import misc
-from lib.pvt import PolypPVT
-from utils.dataloader import test_dataset
-import cv2
-from PIL import Image
-def main(args) :
+import logging
 
-    print(f' step 1. make model')
-    model = PolypPVT()
-    model.load_state_dict(torch.load(args.pth_path))
-    model.cuda()
+import matplotlib.pyplot as plt
+
+
+def structure_loss(pred, mask):
+    weit = 1 + 5 * torch.abs(F.avg_pool2d(mask, kernel_size=31, stride=1, padding=15) - mask)
+    wbce = F.binary_cross_entropy_with_logits(pred, mask, reduce='none')
+    wbce = (weit * wbce).sum(dim=(2, 3)) / weit.sum(dim=(2, 3))
+
+    pred = torch.sigmoid(pred)
+    inter = ((pred * mask) * weit).sum(dim=(2, 3))
+    union = ((pred + mask) * weit).sum(dim=(2, 3))
+    wiou = 1 - (inter + 1) / (union - inter + 1)
+
+    return (wbce + wiou).mean()
+
+
+def test(model, path, dataset):
+    data_path = os.path.join(path, dataset)
+    image_root = '{}/images/'.format(data_path)
+    gt_root = '{}/masks/'.format(data_path)
     model.eval()
+    num1 = len(os.listdir(gt_root))
+    test_loader = test_dataset(image_root, gt_root, 352)
+    DSC = 0.0
+    for i in range(num1):
+        image, gt, name = test_loader.load_data()
+        gt = np.asarray(gt, np.float32)
+        gt /= (gt.max() + 1e-8)
+        image = image.cuda()
 
-    print(f' step 2. check data path')
-    test_folder = ['CVC-300', 'CVC-ClinicDB', 'Kvasir', 'CVC-ColonDB', 'ETIS-LaribPolypDB']
-    train_folder = ['res_256']
-    base_folder = test_folder
-    if args.infer_with_train :
-        base_folder = train_folder
-    for _data_name in base_folder :
+        res, res1 = model(image)
+        # eval Dice
+        res = F.upsample(res + res1, size=gt.shape, mode='bilinear', align_corners=False)
+        res = res.sigmoid().data.cpu().numpy().squeeze()
+        res = (res - res.min()) / (res.max() - res.min() + 1e-8)
+        input = res
+        target = np.array(gt)
+        N = gt.shape
+        smooth = 1
+        input_flat = np.reshape(input, (-1))
+        target_flat = np.reshape(target, (-1))
+        intersection = (input_flat * target_flat)
+        dice = (2 * intersection.sum() + smooth) / (input.sum() + target.sum() + smooth)
+        dice = '{:.4f}'.format(dice)
+        dice = float(dice)
+        DSC = DSC + dice
 
-        # [1] data_path here
-        data_path = os.path.join(args.base_path, _data_name)
-
-        # [2] save_path
-        save_path = os.path.join(args.save_base, _data_name) # './result_map/PolypPVT/{}/'.format()
-        os.makedirs(save_path, exist_ok=True)
-
-        if not args.infer_with_train :
-            image_root = os.path.join(data_path, 'images')
-            gt_root = os.path.join(data_path, 'masks')
-        else :
-            image_root = os.path.join(data_path, 'image_256')
-            gt_root = os.path.join(data_path, 'mask_256')
-
-        num1 = len(os.listdir(gt_root))
-
-        # [3] make test dataset
-        test_loader = test_dataset(image_root, gt_root, 352)
-
-        for i in range(num1):
-
-            # [4] load data
-            # image
-            # gt = pil image
-            # name
-            image, gt, name, rgb_image = test_loader.load_data()
-            gt = np.asarray(gt, np.float32) # [384,384]
-            gt /= (gt.max() + 1e-8)
-            image = image.cuda()
-
-            # [5] model forward
-            P1, P2 = model(image)
-
-            # [6] eval Dice
-            res = F.upsample(P1 + P2, size=gt.shape, mode='bilinear', align_corners=False)
-            res = res.sigmoid().data.cpu().numpy().squeeze()
-            res = (res - res.min()) / (res.max() - res.min() + 1e-8)
-
-            # [7] merging two image with alpha value
-            # res = [500,574]
-            # [0 ~ 1 ] value
-            h,w = res.shape
-            # expand rgb_image to [500,574,3]
-            res = np.expand_dims(res, axis=2).repeat(3, axis=2)
-            res_pil = Image.fromarray((res * 255).astype(np.uint8))
+    return DSC / num1
 
 
-            rgb_image = rgb_image.resize((w,h))
-            #rgb_np = np.array(rgb_image) / 255
-            #print(f'rgb_np shape : {rgb_np.shape}')
+def train(train_loader, model, optimizer, epoch, test_path):
+    model.train()
+    global best
+    size_rates = [0.75, 1, 1.25]
+    loss_P2_record = AvgMeter()
+    for i, pack in enumerate(train_loader, start=1):
+        for rate in size_rates:
+            optimizer.zero_grad()
+            # ---- data prepare ----
+            images, gts = pack
+            images = Variable(images).cuda()
+            gts = Variable(gts).cuda()
+            # ---- rescale ----
+            trainsize = int(round(opt.trainsize * rate / 32) * 32)
+            if rate != 1:
+                images = F.upsample(images, size=(trainsize, trainsize), mode='bilinear', align_corners=True)
+                gts = F.upsample(gts, size=(trainsize, trainsize), mode='bilinear', align_corners=True)
+            # ---- forward ----
+            P1, P2 = model(images)
+            # ---- loss function ----
+            loss_P1 = structure_loss(P1, gts)
+            loss_P2 = structure_loss(P2, gts)
+            loss = loss_P1 + loss_P2
+            # ---- backward ----
+            loss.backward()
+            clip_gradient(optimizer, opt.clip)
+            optimizer.step()
+            # ---- recording loss ----
+            if rate == 1:
+                loss_P2_record.update(loss_P2.data, opt.batchsize)
+        # ---- train visualization ----
+        if i % 20 == 0 or i == total_step:
+            print('{} Epoch [{:03d}/{:03d}], Step [{:04d}/{:04d}], '
+                  ' lateral-5: {:0.4f}]'.
+                  format(datetime.now(), epoch, opt.epoch, i, total_step,
+                         loss_P2_record.show()))
+    # save model
+    save_path = (opt.train_save)
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
+    torch.save(model.state_dict(), save_path + str(epoch) + 'PolypPVT.pth')
+    # choose the best model
 
-            #res = cv2.addWeighted(rgb_np, 0.6, res, 0.4, 0) # res (bad black position white)
-            #cv2.imwrite(os.path.join(save_path, f'{name}'), res * 255)
+    global dict_plot
 
-            gt_np = np.array(gt) * 255
-            gt_pil = Image.fromarray(gt_np.astype(np.uint8)).resize((w,h))
+    test1path = './dataset/TestDataset/'
+    if (epoch + 1) % 1 == 0:
+        for dataset in ['CVC-300', 'CVC-ClinicDB', 'Kvasir', 'CVC-ColonDB', 'ETIS-LaribPolypDB']:
+            dataset_dice = test(model, test1path, dataset)
+            logging.info('epoch: {}, dataset: {}, dice: {}'.format(epoch, dataset, dataset_dice))
+            print(dataset, ': ', dataset_dice)
+            dict_plot[dataset].append(dataset_dice)
+        meandice = test(model, test_path, 'test')
+        dict_plot['test'].append(meandice)
+        if meandice > best:
+            best = meandice
+            torch.save(model.state_dict(), save_path + 'PolypPVT.pth')
+            torch.save(model.state_dict(), save_path + str(epoch) + 'PolypPVT-best.pth')
+            print('##############################################################################best', best)
+            logging.info(
+                '##############################################################################best:{}'.format(best))
 
-            merged_image = Image.blend(rgb_image, res_pil, 0.4)
 
-            # [8] merging all image
-            total_img = Image.new('RGB', (w*4, h))
-            total_img.paste(rgb_image, (0,0))
-            total_img.paste(gt_pil, (w,0))
-            total_img.paste(res_pil, (w*2,0))
-            total_img.paste(merged_image, (w*3,0))
-            total_img.save(os.path.join(save_path, f'{name}'))
-
-        print(_data_name, 'Finish!')
+def plot_train(dict_plot=None, name=None):
+    color = ['red', 'lawngreen', 'lime', 'gold', 'm', 'plum', 'blue']
+    line = ['-', "--"]
+    for i in range(len(name)):
+        plt.plot(dict_plot[name[i]], label=name[i], color=color[i], linestyle=line[(i + 1) % 2])
+        transfuse = {'CVC-300': 0.902, 'CVC-ClinicDB': 0.918, 'Kvasir': 0.918, 'CVC-ColonDB': 0.773,
+                     'ETIS-LaribPolypDB': 0.733, 'test': 0.83}
+        plt.axhline(y=transfuse[name[i]], color=color[i], linestyle='-')
+    plt.xlabel("epoch")
+    plt.ylabel("dice")
+    plt.title('Train')
+    plt.legend()
+    plt.savefig('eval.png')
+    # plt.show()
 
 
 if __name__ == '__main__':
+    dict_plot = {'CVC-300': [], 'CVC-ClinicDB': [], 'Kvasir': [], 'CVC-ColonDB': [], 'ETIS-LaribPolypDB': [],
+                 'test': []}
+    name = ['CVC-300', 'CVC-ClinicDB', 'Kvasir', 'CVC-ColonDB', 'ETIS-LaribPolypDB', 'test']
+    ##################model_name#############################
+    model_name = 'PolypPVT'
+    ###############################################
     parser = argparse.ArgumentParser()
-    parser.add_argument('--testsize', type=int,
-                        default=352, help='testing size')
-    parser.add_argument('--base_path', type=str,
-                        default=r'/home/dreamyou070/MyData/anomaly_detection/medical/leader_polyp/Pranet/train')
-    parser.add_argument('--save_base', type=str, default='./result_sy_infer_with_train')
-    parser.add_argument('--pth_path', type=str, default='./model_pth/PolypPVT.pth')
-    parser.add_argument('--infer_with_train', action='store_true')
-    args = parser.parse_args()
-    main(args)
+
+    parser.add_argument('--epoch', type=int,
+                        default=100, help='epoch number')
+
+    parser.add_argument('--lr', type=float,
+                        default=1e-4, help='learning rate')
+
+    parser.add_argument('--optimizer', type=str,
+                        default='AdamW', help='choosing optimizer AdamW or SGD')
+
+    parser.add_argument('--augmentation',
+                        default=False, help='choose to do random flip rotation')
+
+    parser.add_argument('--batchsize', type=int,
+                        default=16, help='training batch size')
+
+    parser.add_argument('--trainsize', type=int,
+                        default=352, help='training dataset size')
+
+    parser.add_argument('--clip', type=float,
+                        default=0.5, help='gradient clipping margin')
+
+    parser.add_argument('--decay_rate', type=float,
+                        default=0.1, help='decay rate of learning rate')
+
+    parser.add_argument('--decay_epoch', type=int,
+                        default=50, help='every n epochs decay learning rate')
+
+    parser.add_argument('--train_path', type=str,
+                        default='./dataset/TrainDataset/',
+                        help='path to train dataset')
+
+    parser.add_argument('--test_path', type=str,
+                        default='./dataset/TestDataset/',
+                        help='path to testing Kvasir dataset')
+
+    parser.add_argument('--train_save', type=str,
+                        default='./model_pth/' + model_name + '/')
+
+    opt = parser.parse_args()
+    logging.basicConfig(filename='train_log.log',
+                        format='[%(asctime)s-%(filename)s-%(levelname)s:%(message)s]',
+                        level=logging.INFO, filemode='a', datefmt='%Y-%m-%d %I:%M:%S %p')
+
+    # ---- build models ----
+    # torch.cuda.set_device(0)  # set your gpu device
+    model = PolypPVT().cuda()
+
+    best = 0
+
+    params = model.parameters()
+
+    if opt.optimizer == 'AdamW':
+        optimizer = torch.optim.AdamW(params, opt.lr, weight_decay=1e-4)
+    else:
+        optimizer = torch.optim.SGD(params, opt.lr, weight_decay=1e-4, momentum=0.9)
+
+    print(optimizer)
+    image_root = '{}/images/'.format(opt.train_path)
+    gt_root = '{}/masks/'.format(opt.train_path)
+
+    train_loader = get_loader(image_root, gt_root, batchsize=opt.batchsize, trainsize=opt.trainsize,
+                              augmentation=opt.augmentation)
+    total_step = len(train_loader)
+
+    print("#" * 20, "Start Training", "#" * 20)
+
+    for epoch in range(1, opt.epoch):
+        adjust_lr(optimizer, opt.lr, epoch, 0.1, 200)
+        train(train_loader, model, optimizer, epoch, opt.test_path)
+
+    # plot the eval.png in the training stage
+    # plot_train(dict_plot, name)

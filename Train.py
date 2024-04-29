@@ -71,16 +71,16 @@ def test(model, path, dataset):
 
 
 
-def train(train_loader, model, optimizer, epoch, test_path, total_step):
+def train(train_loader, model, optimizer, epoch, test_path, total_step, opt):
     model.train()
     global best
     size_rates = [0.75, 1, 1.25] 
     loss_P2_record = AvgMeter()
+    """
     for i, pack in enumerate(train_loader, start=1):
 
-
         for rate in size_rates:
-
+            
             optimizer.zero_grad()
 
             # [1] data prepare
@@ -95,6 +95,7 @@ def train(train_loader, model, optimizer, epoch, test_path, total_step):
             # 352 * 0.75 = 264 -> 256
             # 352 * 1.25 = 440 -> 448
             # various sizes ...
+
             trainsize = int(round(opt.trainsize * rate / 32) * 32)
             if rate != 1:
                 images = F.upsample(images,
@@ -126,32 +127,35 @@ def train(train_loader, model, optimizer, epoch, test_path, total_step):
         if i % 20 == 0 or i == total_step:
             print('{} Epoch [{:03d}/{:03d}], Step [{:04d}/{:04d}], '
                   ' lateral-5: {:0.4f}]'.
-                  format(datetime.now(), epoch, opt.epoch, i, total_step,
-                         loss_P2_record.show()))
+                  format(datetime.now(), epoch, opt.epoch, i, total_step, loss_P2_record.show()))
     # save model 
     save_path = (opt.train_save)
     if not os.path.exists(save_path):
         os.makedirs(save_path)
     torch.save(model.state_dict(), save_path +str(epoch)+ 'PolypPVT.pth')
     # choose the best model
+    """
 
     global dict_plot
    
-    test1path = './dataset/TestDataset/'
+    test1path = opt.test_path
+
     if (epoch + 1) % 1 == 0:
         for dataset in ['CVC-300', 'CVC-ClinicDB', 'Kvasir', 'CVC-ColonDB', 'ETIS-LaribPolypDB']:
-            dataset_dice = test(model, test1path, dataset)
+            dataset_dice = test(model,
+                                test1path,
+                                dataset)
             logging.info('epoch: {}, dataset: {}, dice: {}'.format(epoch, dataset, dataset_dice))
             print(dataset, ': ', dataset_dice)
             dict_plot[dataset].append(dataset_dice)
-
+        #####################################################################################################################
         # dice score #
         meandice = test(model, test_path, 'test')
         dict_plot['test'].append(meandice)
         if meandice > best:
             best = meandice
-            torch.save(model.state_dict(), save_path + 'PolypPVT.pth')
-            torch.save(model.state_dict(), save_path +str(epoch)+ 'PolypPVT-best.pth')
+            #torch.save(model.state_dict(), save_path + 'PolypPVT.pth')
+            #torch.save(model.state_dict(), save_path +str(epoch)+ 'PolypPVT-best.pth')
             print('##############################################################################best', best)
             logging.info('##############################################################################best:{}'.format(best))
 
@@ -197,17 +201,17 @@ def main(opt):
                               trainsize=opt.trainsize,
                               augmentation=opt.augmentation,
                               domain = opt.domain)
-    """
+
     print(f' step 4. start training')
     for epoch in range(1, opt.epoch):
         adjust_lr(optimizer, opt.lr, epoch, 0.1, 200)
-        train(train_loader, model, optimizer, epoch, opt.test_path, len(train_loader))
-    """
+        train(train_loader, model, optimizer, epoch, opt.test_path, len(train_loader), opt)
+
 
 if __name__ == '__main__':
+
     dict_plot = {'CVC-300':[], 'CVC-ClinicDB':[], 'Kvasir':[], 'CVC-ColonDB':[], 'ETIS-LaribPolypDB':[], 'test':[]}
     name = ['CVC-300', 'CVC-ClinicDB', 'Kvasir', 'CVC-ColonDB', 'ETIS-LaribPolypDB', 'test']
-    ################## model_name #############################
     model_name = 'PolypPVT'
     parser = argparse.ArgumentParser()
     parser.add_argument('--epoch', type=int,

@@ -1,4 +1,4 @@
 python -W ignore Train.py \
- --train_path /home/dreamyou070/MyData/anomaly_detection/medical/brain/BraTS2020_Segmentation_256/train/res_256 \
- --test_path /home/dreamyou070/MyData/anomaly_detection/medical/brain/BraTS2020_Segmentation_256/test \
+ --train_path "/home/dreamyou070/MyData/anomaly_detection/medical/leader_polyp/Pranet/train/res_256" \
+ --test_path "/home/dreamyou070/MyData/anomaly_detection/medical/leader_polyp/Pranet/test" \
  --domain 'brain'

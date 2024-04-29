@@ -155,6 +155,11 @@ class BrainDataset(data.Dataset):
     def __getitem__(self, index):
 
         image = self.rgb_loader(self.images[index])
+
+        gt_path = self.gts[index]
+        # loading numpy gt array
+        gt_np = np.load(gt_path)
+
         gt = self.binary_loader(self.gts[index])
 
         seed = np.random.randint(2147483647)  # make a seed with numpy generator
@@ -165,9 +170,15 @@ class BrainDataset(data.Dataset):
 
         random.seed(seed)  # apply this seed to img tranfsorms
         torch.manual_seed(seed)  # needed for torchvision 0.7
+        # how this is used ... ?
         if self.gt_transform is not None:
             gt = self.gt_transform(gt)
         return image, gt
+
+
+
+
+
 
     def filter_files(self):
         assert len(self.images) == len(self.gts)
@@ -242,6 +253,9 @@ class test_dataset:
         #self.gts = [gt_root + f for f in os.listdir(gt_root) if f.endswith('.tif') or f.endswith('.png')]
         gts = os.listdir(gt_root)
         self.gts = [os.path.join(gt_root,i) for i in gts]
+
+
+
         self.images = sorted(self.images)
         self.gts = sorted(self.gts)
         self.transform = transforms.Compose([
