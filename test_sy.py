@@ -45,6 +45,7 @@ def test(model):
 
         # [1] check gt [res,res]
         gt = np.asarray(gt, np.float32)
+        print(f'original gt = {gt.shape}')
         gt /= (gt.max() + 1e-8)
         target = np.array(gt)
         N = gt.shape

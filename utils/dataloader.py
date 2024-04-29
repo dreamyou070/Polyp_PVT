@@ -7,7 +7,7 @@ import random
 import torch
 
 
-class PolypDataset(data.Dataset):
+class PolypDataset(data.Dataset):f
     """
     dataloader for polyp segmentation tasks
     """
@@ -139,8 +139,7 @@ class test_dataset:
         print(f'img_path = {img_path}')
         image = self.rgb_loader(self.images[self.index])
         image = self.transform(image).unsqueeze(0)
-        gt = self.binary_loader(self.gts[self.index])
-        print(f'original gt = {gt.shape}')
+        gt = self.binary_loader(self.gts[self.index]) # gt pillow
 
         name = self.images[self.index].split('/')[-1]
         if name.endswith('.jpg'):
