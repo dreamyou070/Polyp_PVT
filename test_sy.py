@@ -50,6 +50,7 @@ def test(model):
         N = gt.shape
         smooth = 1
         target_flat = np.reshape(target, (-1))  # [batch, res*res]
+
         print(f' target_flat = {target_flat.shape}')
 
         # [2] image and prdict
@@ -67,12 +68,11 @@ def test(model):
         
 
         intersection = (input_flat * target_flat)
-        dice = (2 * intersection.sum() + smooth) / (input.sum() + target.sum() + smooth)
+        dice = (2 * intersection.sum() + smooth) / (input.sum() + target.sum() + smooth) # dice = every pixel by pixel
+
         dice = '{:.4f}'.format(dice)
         dice = float(dice)
-        DSC = DSC + dice
-
-
+        DSC = DSC + dice # adding dice score to get mean  DSC
     return DSC / num1
 
 
