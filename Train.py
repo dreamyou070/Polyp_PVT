@@ -32,26 +32,30 @@ def structure_loss(pred, mask):
 def test(model, path, dataset):
 
     data_path = os.path.join(path, dataset)
-    image_root = '{}/images/'.format(data_path)
-    gt_root = '{}/masks/'.format(data_path)
+    image_root = os.path.join(data_path, 'images')
+    gt_root = os.path.join(data_path, 'masks')
     model.eval()
     num1 = len(os.listdir(gt_root))
     test_loader = test_dataset(image_root, gt_root, 352)
+
+
     DSC = 0.0
     for i in range(num1):
+
         image, gt, name = test_loader.load_data()
+
+        # [1] check gt
         gt = np.asarray(gt, np.float32)
         gt /= (gt.max() + 1e-8)
+
+        # [2] image and prdict
         image = image.cuda()
-
         res, res1  = model(image)
-        # eval Dice
-
-        # [1] predict
         res = F.upsample(res + res1 , size=gt.shape, mode='bilinear', align_corners=False)
         res = res.sigmoid().data.cpu().numpy().squeeze()
         res = (res - res.min()) / (res.max() - res.min() + 1e-8)
         input = res
+
         # [2] gt image
 
         target = np.array(gt)
@@ -142,9 +146,9 @@ def train(train_loader, model, optimizer, epoch, test_path, total_step, opt):
 
     if (epoch + 1) % 1 == 0:
         for dataset in ['CVC-300', 'CVC-ClinicDB', 'Kvasir', 'CVC-ColonDB', 'ETIS-LaribPolypDB']:
-            dataset_dice = test(model,
-                                test1path,
-                                dataset)
+            # --------------------------------------------------------------------------------------------------------
+            # testing
+            dataset_dice = test(model, test1path, dataset)
             logging.info('epoch: {}, dataset: {}, dice: {}'.format(epoch, dataset, dataset_dice))
             print(dataset, ': ', dataset_dice)
             dict_plot[dataset].append(dataset_dice)
