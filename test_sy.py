@@ -32,9 +32,9 @@ def structure_loss(pred, mask):
 def test(model):
     # [1] make test loader
     data_path = 'data_sample'
-    image_root = os.path.join(data_path, 'data_sample/images')
-    gt_root = os.path.join(data_path, 'data_sample/masks')
-    model.eval()
+    image_root = os.path.join(data_path, 'images')
+    gt_root = os.path.join(data_path, 'masks')
+    #model.eval()
     num1 = len(os.listdir(gt_root))
     test_loader = test_dataset(image_root, gt_root, 352)
 
@@ -46,29 +46,31 @@ def test(model):
         # [1] check gt [res,res]
         gt = np.asarray(gt, np.float32)
         gt /= (gt.max() + 1e-8)
+        target = np.array(gt)
+        N = gt.shape
+        smooth = 1
+        target_flat = np.reshape(target, (-1))  # [batch, res*res]
+        print(f' target_flat = {target_flat.size()}')
 
         # [2] image and prdict
+
+        """
         image = image.cuda()
         res, res1 = model(image)
         res = F.upsample(res + res1, size=gt.shape, mode='bilinear', align_corners=False)
         res = res.sigmoid().data.cpu().numpy().squeeze()
         res = (res - res.min()) / (res.max() - res.min() + 1e-8)
         input = res
-
-        # [2] gt image
-        target = np.array(gt)
-        N = gt.shape
-        smooth = 1
-
         # Getting Dice Score #
         input_flat = np.reshape(input, (-1))  # [batch, res*res]
-        target_flat = np.reshape(target, (-1))  # [batch, res*res]
+        
 
         intersection = (input_flat * target_flat)
         dice = (2 * intersection.sum() + smooth) / (input.sum() + target.sum() + smooth)
         dice = '{:.4f}'.format(dice)
         dice = float(dice)
         DSC = DSC + dice
+        """
 
     return DSC / num1
 
@@ -81,7 +83,7 @@ def main(opt):
     #logging.basicConfig(filename='train_log.log',
     #                    format='[%(asctime)s-%(filename)s-%(levelname)s:%(message)s]',
     #                    level=logging.INFO, filemode='a', datefmt='%Y-%m-%d %I:%M:%S %p')
-    model = PolypPVT().cuda()
+    model = PolypPVT()#.cuda()
     dataset_dice = test(model)
 
 
