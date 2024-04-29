@@ -7,7 +7,7 @@ import random
 import torch
 
 
-class PolypDataset(data.Dataset):f
+class PolypDataset(data.Dataset):
     """
     dataloader for polyp segmentation tasks
     """
