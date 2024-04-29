@@ -50,11 +50,11 @@ def test(model):
         N = gt.shape
         smooth = 1
         target_flat = np.reshape(target, (-1))  # [batch, res*res]
-        print(f' target_flat = {target_flat.size()}')
+        print(f' target_flat = {target_flat.shape}')
 
         # [2] image and prdict
 
-        """
+
         image = image.cuda()
         res, res1 = model(image)
         res = F.upsample(res + res1, size=gt.shape, mode='bilinear', align_corners=False)
@@ -63,6 +63,7 @@ def test(model):
         input = res
         # Getting Dice Score #
         input_flat = np.reshape(input, (-1))  # [batch, res*res]
+        print(f' input_flat = {input_flat.shape}')
         
 
         intersection = (input_flat * target_flat)
@@ -70,7 +71,7 @@ def test(model):
         dice = '{:.4f}'.format(dice)
         dice = float(dice)
         DSC = DSC + dice
-        """
+
 
     return DSC / num1
 
@@ -83,7 +84,7 @@ def main(opt):
     #logging.basicConfig(filename='train_log.log',
     #                    format='[%(asctime)s-%(filename)s-%(levelname)s:%(message)s]',
     #                    level=logging.INFO, filemode='a', datefmt='%Y-%m-%d %I:%M:%S %p')
-    model = PolypPVT()#.cuda()
+    model = PolypPVT().cuda()
     dataset_dice = test(model)
 
 
