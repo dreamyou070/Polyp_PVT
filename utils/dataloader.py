@@ -244,7 +244,10 @@ class test_dataset:
     # no getitem .. ?
 
     # testsize = 384
-    def __init__(self, image_root, gt_root, testsize):
+    def __init__(self,
+                 image_root,
+                 gt_root,
+                 testsize):
 
         self.testsize = testsize
         #self.images = [image_root + f for f in os.listdir(image_root) if f.endswith('.jpg') or f.endswith('.png')]
@@ -254,15 +257,12 @@ class test_dataset:
         gts = os.listdir(gt_root)
         self.gts = [os.path.join(gt_root,i) for i in gts]
 
-
-
         self.images = sorted(self.images)
         self.gts = sorted(self.gts)
-        self.transform = transforms.Compose([
-            transforms.Resize((self.testsize, self.testsize)),
-            transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406],
-                                 [0.229, 0.224, 0.225])])
+        self.transform = transforms.Compose([transforms.Resize((self.testsize, self.testsize)),
+                                             transforms.ToTensor(),
+                                             transforms.Normalize([0.485, 0.456, 0.406],
+                                                                  [0.229, 0.224, 0.225])])
         self.gt_transform = transforms.ToTensor()
         self.size = len(self.images)
         self.index = 0
@@ -270,11 +270,15 @@ class test_dataset:
     def load_data(self):
         rgb_image = self.rgb_loader(self.images[self.index])
         image = self.transform(rgb_image).unsqueeze(0)
+
+        # [2] gt = [res,res]
         gt = self.binary_loader(self.gts[self.index])
+
         name = self.images[self.index].split('/')[-1]
         if name.endswith('.jpg'):
             name = name.split('.jpg')[0] + '.png'
         self.index += 1
+
         return image, gt, name, rgb_image
 
     def rgb_loader(self, path):

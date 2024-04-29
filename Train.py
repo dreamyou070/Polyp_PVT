@@ -31,6 +31,7 @@ def structure_loss(pred, mask):
 
 def test(model, path, dataset):
 
+    # [1] make test loader
     data_path = os.path.join(path, dataset)
     image_root = os.path.join(data_path, 'images')
     gt_root = os.path.join(data_path, 'masks')
@@ -38,13 +39,13 @@ def test(model, path, dataset):
     num1 = len(os.listdir(gt_root))
     test_loader = test_dataset(image_root, gt_root, 352)
 
-
+    # [2] make test loader
     DSC = 0.0
     for i in range(num1):
 
         image, gt, name = test_loader.load_data()
 
-        # [1] check gt
+        # [1] check gt [res,res]
         gt = np.asarray(gt, np.float32)
         gt /= (gt.max() + 1e-8)
 
@@ -57,14 +58,14 @@ def test(model, path, dataset):
         input = res
 
         # [2] gt image
-
         target = np.array(gt)
         N = gt.shape
         smooth = 1
 
         # Getting Dice Score #
-        input_flat = np.reshape(input, (-1))
-        target_flat = np.reshape(target, (-1))
+        input_flat = np.reshape(input, (-1))   # [batch, res*res]
+        target_flat = np.reshape(target, (-1)) # [batch, res*res]
+
         intersection = (input_flat * target_flat)
         dice = (2 * intersection.sum() + smooth) / (input.sum() + target.sum() + smooth)
         dice = '{:.4f}'.format(dice)
